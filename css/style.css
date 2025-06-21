@@ -1,0 +1,440 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+}
+
+.container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background: white;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: end;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.filters.collapsed {
+    max-height: 0;
+    padding: 0 15px;
+    margin: 0;
+    border: none;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+.filters.expanded {
+    max-height: 300px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #495057;
+    margin: 0;
+}
+
+.filter-input {
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    min-width: 120px;
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #6c757d;
+    border: 1px solid #6c757d;
+}
+
+.btn-outline:hover {
+    background: #6c757d;
+    color: white;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.info {
+    display: flex;
+    gap: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+main {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    text-align: center;
+    z-index: 2000;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 15px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #dc3545;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 2000;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 3000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 10px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #666;
+    cursor: pointer;
+    z-index: 1;
+    background: white;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.close:hover {
+    color: #000;
+}
+
+#modalImage {
+    max-width: 100%;
+    max-height: 70vh;
+    display: block;
+}
+
+.photo-info {
+    padding: 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.photo-info h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.photo-info p {
+    margin: 5px 0;
+    color: #666;
+}
+
+/* Custom Leaflet Popup */
+.leaflet-popup-content {
+    margin: 8px 12px;
+    line-height: 1.4;
+}
+
+/* Photo Marker Pin Styles */
+.photo-marker-pin {
+    background: transparent !important;
+    border: none !important;
+}
+
+.photo-marker-pin .pin {
+    width: 24px;
+    height: 36px;
+    position: relative;
+    background: #dc3545;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.photo-marker-pin .pin::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.photo-marker-pin:hover .pin {
+    background: #a71e2a;
+    transform: rotate(-45deg) scale(1.1);
+}
+
+/* Pin Color Variations */
+.photo-marker-pin.blue .pin {
+    background: #007bff;
+}
+
+.photo-marker-pin.blue:hover .pin {
+    background: #0056b3;
+}
+
+.photo-marker-pin.green .pin {
+    background: #28a745;
+}
+
+.photo-marker-pin.green:hover .pin {
+    background: #1e7e34;
+}
+
+.photo-marker-pin.orange .pin {
+    background: #fd7e14;
+}
+
+.photo-marker-pin.orange:hover .pin {
+    background: #e55a00;
+}
+
+.photo-marker-pin.purple .pin {
+    background: #6f42c1;
+}
+
+.photo-marker-pin.purple:hover .pin {
+    background: #59359a;
+}
+
+.popup-image {
+    width: 200px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.popup-image:hover {
+    transform: scale(1.05);
+}
+
+.popup-info {
+    font-size: 12px;
+    color: #666;
+}
+
+.popup-info strong {
+    color: #333;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+    
+    .controls {
+        gap: 10px;
+    }
+    
+    .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filters {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .filters.expanded {
+        max-height: 400px;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-input {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .filter-buttons {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .info {
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    .filter-buttons .btn {
+        flex: 1;
+    }
+}
