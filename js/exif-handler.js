@@ -497,14 +497,107 @@ class ExifHandler {
         });
     }
 
+    // 軽量版: 複数ファイルのEXIF情報を処理（最小限のメモリ使用）
+    async processFilesLite(fileObjects, progressCallback) {
+        this.photosWithGPS = [];
+        const total = fileObjects.length;
+
+        console.log(`⚡ 軽量モード: ${total}枚の写真を処理開始...`);
+
+        for (let i = 0; i < fileObjects.length; i++) {
+            const fileObj = fileObjects[i];
+            
+            if (progressCallback) {
+                progressCallback(i + 1, total, fileObj.name);
+            }
+
+            try {
+                // 軽量版では最小限のEXIF抽出
+                const exifData = await this.extractExifDataLite(fileObj);
+
+                if (exifData.hasGPS) {
+                    this.photosWithGPS.push(exifData);
+                    console.log(`✓ GPS情報発見: ${fileObj.name}`);
+                }
+            } catch (error) {
+                console.warn(`⚠️ 処理エラー (${fileObj.name}):`, error);
+            }
+
+            // UIの応答性を保つ
+            if (i % 10 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 1));
+            }
+        }
+
+        console.log(`⚡ 軽量処理完了: 全${total}枚中${this.photosWithGPS.length}枚にGPS情報あり`);
+
+        return {
+            photosWithGPS: this.photosWithGPS,
+            totalCount: total,
+            gpsCount: this.photosWithGPS.length
+        };
+    }
+
+    // 軽量版EXIF抽出（GPS情報のみに特化）
+    async extractExifDataLite(fileObj) {
+        try {
+            // ファイルハンドルから最小限のファイル情報を取得
+            const file = await fileObj.handle.getFile();
+            const arrayBuffer = await file.arrayBuffer();
+            const tags = ExifReader.load(arrayBuffer);
+
+            const exifData = {
+                filename: fileObj.name,
+                filePath: fileObj.path, // ファイルパスを保持
+                hasGPS: false,
+                latitude: null,
+                longitude: null,
+                dateTime: null,
+                camera: null
+            };
+
+            // GPS情報の取得（効率化）
+            if (tags.GPSLatitude && tags.GPSLongitude) {
+                const lat = this.convertGPSValue(tags.GPSLatitude, tags.GPSLatitudeRef);
+                const lng = this.convertGPSValue(tags.GPSLongitude, tags.GPSLongitudeRef);
+                
+                if (lat !== null && lng !== null) {
+                    exifData.latitude = lat;
+                    exifData.longitude = lng;
+                    exifData.hasGPS = true;
+                }
+            }
+
+            // 最小限の撮影日時とカメラ情報
+            if (exifData.hasGPS) {
+                exifData.dateTime = this.extractDateTime(tags);
+                exifData.camera = this.extractCameraInfo(tags);
+            }
+
+            return exifData;
+        } catch (error) {
+            console.warn(`軽量版EXIF読み取りエラー (${fileObj.name}):`, error);
+            return {
+                filename: fileObj.name,
+                filePath: fileObj.path,
+                hasGPS: false,
+                error: error.message
+            };
+        }
+    }
+
     // 写真情報をフォーマット
     formatPhotoInfo(photo) {
         const info = {
             filename: photo.filename,
-            path: photo.path,
-            fileSize: fileHandler.formatFileSize(photo.fileSize),
+            path: photo.path || photo.filePath,
             coordinates: photo.hasGPS ? `${photo.latitude.toFixed(6)}, ${photo.longitude.toFixed(6)}` : '位置情報なし'
         };
+
+        // ファイルサイズ（軽量版では省略する場合がある）
+        if (photo.fileSize) {
+            info.fileSize = fileHandler.formatFileSize(photo.fileSize);
+        }
 
         if (photo.dateTime) {
             info.dateTime = photo.dateTime.toLocaleString('ja-JP');

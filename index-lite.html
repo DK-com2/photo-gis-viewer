@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo GIS Viewer</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Photo GIS Viewer (軽量版)</h1>
+            <div class="controls">
+                <div class="controls-row">
+                    <button id="selectFolder" class="btn btn-primary">📁 フォルダを選択</button>
+                    <button id="toggleFilters" class="btn btn-outline hidden">🔍 フィルター</button>
+                    <div class="info">
+                        <span id="photoCount">0枚の写真</span>
+                        <span id="gpsCount">0枚に位置情報あり</span>
+                        <span id="visibleCount">0枚表示中</span>
+                    </div>
+                </div>
+                <div class="filters collapsed" id="filtersSection">
+                    <div class="filter-group">
+                        <label for="startDate">📅 開始日:</label>
+                        <input type="date" id="startDate" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="endDate">📅 終了日:</label>
+                        <input type="date" id="endDate" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="cameraFilter">📷 カメラ:</label>
+                        <select id="cameraFilter" class="filter-input">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="filter-buttons">
+                        <button id="applyFilters" class="btn btn-secondary">🔍 フィルター適用</button>
+                        <button id="clearFilters" class="btn btn-outline">✖️ クリア</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <main>
+            <div id="map"></div>
+            <div id="loading" class="loading hidden">
+                <div class="loading-spinner"></div>
+                <p>写真を処理中...</p>
+            </div>
+            <div id="error" class="error hidden"></div>
+        </main>
+        
+        <div id="photoModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <img id="modalImage" src="" alt="">
+                <div id="modalInfo" class="photo-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    
+    <!-- ExifReader JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exifreader@4.16.0/dist/exif-reader.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="js/file-handler.js"></script>
+    <script src="js/exif-handler.js"></script>
+    <script src="js/map-handler.js"></script>
+    <script src="js/app-lite.js"></script>
+</body>
+</html>

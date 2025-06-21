@@ -381,6 +381,40 @@ main {
     color: #333;
 }
 
+/* 軽量版用のスタイル */
+.popup-content-lite {
+    padding: 10px;
+    font-size: 12px;
+}
+
+.popup-content-lite .popup-info {
+    color: #666;
+}
+
+.popup-content-lite .popup-info strong {
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    font-size: 11px;
+    border: 1px solid #007bff;
+    background: #007bff;
+    color: white;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-top: 5px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-small:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     header {

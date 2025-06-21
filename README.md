@@ -35,12 +35,30 @@
 
 ## 🚀 使用方法
 
+### バージョンの選択
+
+**標準版 (index.html):**
+- 写真数が少ない場合（~100枚）
+- 高画質プレビューが必要
+- 詳細な撮影情報表示
+
+**軽量版 (index-lite.html):**
+- 大量の写真（500枚以上）
+- メモリ使用量を抑制
+- シンプルな表示
+
 ### 1. アプリケーションの起動
 
-**簡単な方法:**
+**標準版:**
 ```bash
 # index.htmlを直接ブラウザで開く
 index.html をダブルクリック
+```
+
+**軽量版:**
+```bash
+# index-lite.htmlを直接ブラウザで開く
+index-lite.html をダブルクリック
 ```
 
 **代替方法（トラブル時）:**
@@ -109,17 +127,18 @@ python -m http.server 8000
 ### ファイル構成
 
 ```
-Photo-GIS/
-├── index.html              # メインHTML
+photo-gis-viewer/
+├── index.html              # 標準版HTML
+├── index-lite.html         # 軽量版HTML
 ├── css/
 │   └── style.css          # スタイルシート
 ├── js/
-│   ├── app.js             # メインアプリケーション
+│   ├── app.js             # 標準版アプリケーション
+│   ├── app-lite.js        # 軽量版アプリケーション
 │   ├── file-handler.js    # ファイル処理
 │   ├── exif-handler.js    # EXIF情報処理
 │   └── map-handler.js     # 地図操作
-├── libs/                   # 外部ライブラリ
-└── assets/                 # アセット（アイコンなど）
+└── README.md               # ドキュメント
 ```
 
 ### カスタマイズ方法
@@ -150,6 +169,8 @@ const photoIcon = L.divIcon({
 
 - File System Access API対応ブラウザでのみフォルダ選択が可能
 - 大量の写真（数千枚）を処理する際はブラウザのメモリ制限に注意
+  - 標準版: ~100枚推奨
+  - 軽量版: 500枚以上対応
 - 写真ファイルのサイズが大きい場合、処理に時間がかかる場合があります
 - 撮影方向（コンパス方向）の情報は取得できません
 
