@@ -43,6 +43,10 @@ function setupEventListeners() {
     clearFiltersBtn.addEventListener('click', handleClearFilters);
     toggleFiltersBtn.addEventListener('click', toggleFilters);
 
+    // GISエクスポートボタン
+    const exportGISBtn = document.getElementById('exportGIS');
+    exportGISBtn.addEventListener('click', handleGISExport);
+
     // モーダルのクローズ
     const modal = document.getElementById('photoModal');
     const closeBtn = modal.querySelector('.close');
@@ -71,9 +75,29 @@ function setupEventListeners() {
 }
 
 function checkBrowserSupport() {
+    const selectBtn = document.getElementById('selectFolder');
+    
     if (!fileHandler.isSupported()) {
-        showError('お使いのブラウザはフォルダ選択に対応していません。Chrome または Edge の最新版をご利用ください。');
-        document.getElementById('selectFolder').disabled = true;
+        let message = 'お使いのブラウザはフォルダ選択に対応していません。';
+        
+        if (fileHandler.supportLevel === 'BASIC') {
+            message += 'Chrome、Edge、Safari、または Firefox の最新版をご利用ください。';
+        }
+        
+        showError(message);
+        selectBtn.disabled = true;
+    } else {
+        // サポートレベルに応じた情報表示
+        let supportInfo = '';
+        switch (fileHandler.supportLevel) {
+            case 'FULL':
+                supportInfo = '⚡ 軽量版＋フル機能サポート';
+                break;
+            case 'WEBKIT':
+                supportInfo = '⚡ 軽量版＋部分サポート（WebKit API）';
+                break;
+        }
+        console.log(`🔍 ブラウザサポート: ${supportInfo}`);
     }
 }
 
@@ -115,6 +139,9 @@ async function handleFolderSelection() {
         } else {
             console.log(`⚡ ${results.gpsCount}枚の写真を軽量モードで表示しました。`);
             updateVisibleCount(results.gpsCount);
+            
+            // GISエクスポートボタンを表示
+            showExportButton();
             
             // メモリ使用量をログ出力（詳細ボタンなし）
             if (performance.memory) {
@@ -420,6 +447,159 @@ function handleClearFilters() {
     updateVisibleCount(allPhotos.length);
     
     console.log('⚡ 軽量版フィルターをクリアしました');
+}
+
+// GISエクスポート機能（軽量版 - 別画面オープン方式）
+async function handleGISExport() {
+    try {
+        if (!exifHandler || !exifHandler.getPhotosWithGPS || exifHandler.getPhotosWithGPS().length === 0) {
+            showError('GISエクスポートできるデータがありません。');
+            return;
+        }
+
+        const photosCount = exifHandler.getPhotosWithGPS().length;
+        console.log(`⚡ 📊 ${photosCount}枚の写真データでエクスポート画面を開きます（軽量版）`);
+
+        // 別画面でエクスポート画面を開く
+        const exportWindow = window.open(
+            'export.html', 
+            'gis-export',
+            'width=700,height=800,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no'
+        );
+
+        if (!exportWindow) {
+            showError('ポップアップがブロックされました。ブラウザのポップアップ設定を確認してください。');
+            return;
+        }
+
+        // 新しいウィンドウにフォーカスを当てる
+        exportWindow.focus();
+        
+        // エクスポートウィンドウが読み込み完了後にデータを送信
+        exportWindow.addEventListener('load', () => {
+            setTimeout(() => {
+                sendDataToExportWindow(exportWindow);
+            }, 1000); // 1秒待ってから送信
+        });
+        
+        // 即座にも送信を試行（既に読み込み済みの場合）
+        setTimeout(() => {
+            sendDataToExportWindow(exportWindow);
+        }, 2000);
+        
+        console.log('⚡ ✅ 軽量版エクスポート画面を開きました');
+        
+    } catch (error) {
+        console.error('軽量版GISエクスポートエラー:', error);
+        showError(`エクスポート画面の表示に失敗しました: ${error.message}`);
+    }
+}
+
+// エクスポートウィンドウにデータを送信（軽量版）
+function sendDataToExportWindow(exportWindow) {
+    try {
+        if (!exportWindow || exportWindow.closed) {
+            console.warn('エクスポートウィンドウが閉じられています');
+            return;
+        }
+
+        const photosWithGPS = exifHandler.getPhotosWithGPS();
+        
+        // 写真データをシリアライズ可能な形式に変換（軽量版）
+        const serializedData = photosWithGPS.map(photo => ({
+            filename: photo.filename,
+            filePath: photo.path || photo.filePath,
+            latitude: photo.latitude,
+            longitude: photo.longitude,
+            hasGPS: photo.hasGPS,
+            dateTime: photo.dateTime ? photo.dateTime.toISOString() : null,
+            camera: photo.camera ? {
+                make: photo.camera.make,
+                model: photo.camera.model,
+                lens: photo.camera.lens
+            } : null,
+            settings: photo.settings
+        }));
+
+        // postMessageでデータを送信
+        exportWindow.postMessage({
+            type: 'PHOTO_DATA',
+            data: serializedData,
+            timestamp: new Date().toISOString(),
+            source: 'lite' // 軽量版からの送信であることを示す
+        }, '*');
+        
+        console.log(`⚡ 📨 ${serializedData.length}枚の写真データをエクスポートウィンドウに送信しました（軽量版）`);
+        
+    } catch (error) {
+        console.error('軽量版データ送信エラー:', error);
+    }
+}
+
+// エクスポートボタンの表示
+function showExportButton() {
+    const exportBtn = document.getElementById('exportGIS');
+    exportBtn.classList.remove('hidden');
+}
+
+// エクスポートボタンの非表示
+function hideExportButton() {
+    const exportBtn = document.getElementById('exportGIS');
+    exportBtn.classList.add('hidden');
+}
+
+// エクスポート成功メッセージ表示（軽量版）
+function showExportSuccessMessage(photosCount) {
+    // メッセージボックスを作成
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 500px;
+        text-align: center;
+        border: 2px solid #28a745;
+    `;
+    
+    messageDiv.innerHTML = `
+        <h3 style="color: #28a745; margin: 0 0 15px 0;">⚡ エクスポート完了!</h3>
+        <p style="margin: 10px 0; color: #333;">${photosCount}枚の写真位置情報を軽量モードでエクスポートしました。</p>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 15px 0; text-align: left;">
+            <p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>📊 ダウンロードされたファイル:</strong></p>
+            <p style="margin: 5px 0; font-size: 13px; color: #555;">・ photo_locations_*.geojson (地図ソフト用)</p>
+            <p style="margin: 5px 0; font-size: 13px; color: #555;">・ photo_locations_*.csv (表計算用)</p>
+            <p style="margin: 5px 0; font-size: 13px; color: #555;">・ export_metadata_*.txt (説明書)</p>
+        </div>
+        <div style="background: #fff3cd; padding: 10px; border-radius: 6px; margin: 15px 0; border: 1px solid #ffeaa7;">
+            <p style="margin: 0; font-size: 12px; color: #856404;">
+                <strong>🛡️ Windowsの場合:</strong> セキュリティ警告が出た場合は「詳細情報」→「実行」で解決できます。
+            </p>
+        </div>
+        <button onclick="this.parentElement.remove()" style="
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        ">閉じる</button>
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 10秒後に自動除去
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 10000);
 }
 
 function showLoading() {

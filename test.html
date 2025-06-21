@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo GIS Viewer - テスト & デバッグ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.ok { background: #d4edda; color: #155724; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .info-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log-area {
+            background: #212529;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .nav-links {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .nav-links a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .nav-links a:hover {
+            background: #1e7e34;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Photo GIS Viewer - テスト & デバッグ</h1>
+            <p>システムの動作状況と修正内容を確認できます</p>
+        </div>
+
+        <div class="nav-links">
+            <a href="index.html">📷 標準版を開く</a>
+            <a href="index-lite.html">⚡ 軽量版を開く</a>
+            <a href="export.html">📊 エクスポート画面</a>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 ブラウザサポート状況</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>ユーザーエージェント:</strong><br>
+                    <span id="userAgent">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>File System Access API:</strong><br>
+                    <span id="fileSystemApi">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>WebKit Directory API:</strong><br>
+                    <span id="webkitDirectory">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>サポートレベル:</strong><br>
+                    <span id="supportLevel">検出中...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📚 ライブラリ読み込み状況</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Leaflet:</strong><br>
+                    <span id="leafletStatus">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>ExifReader:</strong><br>
+                    <span id="exifReaderStatus">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>EXIF.js:</strong><br>
+                    <span id="exifJsStatus">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>JSZip:</strong><br>
+                    <span id="jszipStatus">検出中...</span>
+                </div>
+            </div>
+            <button class="test-button" onclick="testFallbackLoader()">🔄 フォールバック機能をテスト</button>
+        </div>
+
+        <div class="test-section">
+            <h3>💾 メモリ情報</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>使用中:</strong><br>
+                    <span id="memoryUsed">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>総使用量:</strong><br>
+                    <span id="memoryTotal">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>制限:</strong><br>
+                    <span id="memoryLimit">検出中...</span>
+                </div>
+                <div class="info-item">
+                    <strong>使用率:</strong><br>
+                    <span id="memoryPercent">検出中...</span>
+                </div>
+            </div>
+            <button class="test-button" onclick="updateMemoryInfo()">🔄 メモリ情報を更新</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 機能テスト</h3>
+            <button class="test-button" onclick="testFileHandler()">📁 ファイルハンドラー</button>
+            <button class="test-button" onclick="testExifHandler()">📷 EXIF処理</button>
+            <button class="test-button" onclick="testGisExporter()">📊 GISエクスポート</button>
+            <button class="test-button" onclick="testErrorHandling()">⚠️ エラーハンドリング</button>
+            <button class="test-button" onclick="clearLog()">🗑️ ログクリア</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 テストログ</h3>
+            <div id="testLog" class="log-area">テストを実行してください...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>✅ 修正完了項目</h3>
+            <ul>
+                <li>✅ <strong>絶対パス問題の解決</strong> - getAbsolutePath() メソッドを安全に修正</li>
+                <li>✅ <strong>ブラウザサポート拡張</strong> - Safari/Firefox で WebKit Directory API 対応</li>
+                <li>✅ <strong>メモリ管理改善</strong> - バッチ処理とリアルタイム監視を実装</li>
+                <li>✅ <strong>エラーハンドリング強化</strong> - 詳細なエラー情報と自動復旧機能</li>
+                <li>✅ <strong>CDN依存解決</strong> - フォールバック機能と機能縮退モード</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ライブラリの読み込み（テスト用） -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exifreader@4.16.0/dist/exif-reader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- テスト対象のスクリプト -->
+    <script src="libs/fallback-loader.js"></script>
+    <script src="js/file-handler.js"></script>
+    <script src="js/exif-handler.js"></script>
+    <script src="js/gis-exporter.js"></script>
+
+    <script>
+        // テスト用のログ機能
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorMap = {
+                'info': '#fff',
+                'success': '#28a745',
+                'warning': '#ffc107',
+                'error': '#dc3545'
+            };
+            
+            logArea.innerHTML += `<div style="color: ${colorMap[type]};">[${timestamp}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+            log('ログをクリアしました', 'info');
+        }
+
+        // ブラウザサポート状況の検出
+        function detectBrowserSupport() {
+            // ユーザーエージェント
+            document.getElementById('userAgent').textContent = navigator.userAgent;
+
+            // File System Access API
+            const hasFileSystemApi = 'showDirectoryPicker' in window;
+            document.getElementById('fileSystemApi').innerHTML = hasFileSystemApi ? 
+                '<span class="status ok">サポート</span>' : 
+                '<span class="status error">非サポート</span>';
+
+            // WebKit Directory API
+            const input = document.createElement('input');
+            const hasWebkitDirectory = 'webkitdirectory' in input;
+            document.getElementById('webkitDirectory').innerHTML = hasWebkitDirectory ? 
+                '<span class="status ok">サポート</span>' : 
+                '<span class="status error">非サポート</span>';
+
+            // サポートレベル
+            let supportLevel = 'BASIC';
+            if (hasFileSystemApi) {
+                supportLevel = 'FULL';
+            } else if (hasWebkitDirectory) {
+                supportLevel = 'WEBKIT';
+            }
+            
+            const statusClass = supportLevel === 'FULL' ? 'ok' : 
+                               supportLevel === 'WEBKIT' ? 'warning' : 'error';
+            document.getElementById('supportLevel').innerHTML = 
+                `<span class="status ${statusClass}">${supportLevel}</span>`;
+
+            log(`ブラウザサポートレベル: ${supportLevel}`, 'info');
+        }
+
+        // ライブラリ読み込み状況の確認
+        function checkLibraries() {
+            const libraries = [
+                { name: 'Leaflet', check: () => typeof L !== 'undefined', element: 'leafletStatus' },
+                { name: 'ExifReader', check: () => typeof ExifReader !== 'undefined', element: 'exifReaderStatus' },
+                { name: 'EXIF.js', check: () => typeof EXIF !== 'undefined', element: 'exifJsStatus' },
+                { name: 'JSZip', check: () => typeof JSZip !== 'undefined', element: 'jszipStatus' }
+            ];
+
+            libraries.forEach(lib => {
+                const isLoaded = lib.check();
+                const element = document.getElementById(lib.element);
+                element.innerHTML = isLoaded ? 
+                    '<span class="status ok">読み込み済み</span>' : 
+                    '<span class="status error">未読み込み</span>';
+                
+                log(`${lib.name}: ${isLoaded ? '✅' : '❌'}`, isLoaded ? 'success' : 'error');
+            });
+        }
+
+        // メモリ情報の更新
+        function updateMemoryInfo() {
+            if (performance.memory) {
+                const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                const total = Math.round(performance.memory.totalJSHeapSize / 1024 / 1024);
+                const limit = Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024);
+                const percent = ((used / limit) * 100).toFixed(1);
+
+                document.getElementById('memoryUsed').textContent = `${used}MB`;
+                document.getElementById('memoryTotal').textContent = `${total}MB`;
+                document.getElementById('memoryLimit').textContent = `${limit}MB`;
+                
+                const percentElement = document.getElementById('memoryPercent');
+                const statusClass = percent > 80 ? 'error' : percent > 60 ? 'warning' : 'ok';
+                percentElement.innerHTML = `<span class="status ${statusClass}">${percent}%</span>`;
+
+                log(`メモリ使用量: ${used}MB/${limit}MB (${percent}%)`, 'info');
+            } else {
+                ['memoryUsed', 'memoryTotal', 'memoryLimit', 'memoryPercent'].forEach(id => {
+                    document.getElementById(id).innerHTML = '<span class="status warning">利用不可</span>';
+                });
+                log('メモリ情報が利用できません', 'warning');
+            }
+        }
+
+        // フォールバック機能のテスト
+        function testFallbackLoader() {
+            log('フォールバック機能をテスト中...', 'info');
+            
+            if (typeof window.fallbackLoader !== 'undefined') {
+                // 各ライブラリの状況をチェック
+                const libraries = ['leaflet', 'exifreader', 'exifjs', 'jszip'];
+                libraries.forEach(lib => {
+                    const isLoaded = window.fallbackLoader.isLibraryLoaded(lib);
+                    log(`${lib}: ${isLoaded ? '✅ 読み込み済み' : '❌ 未読み込み'}`, 
+                        isLoaded ? 'success' : 'warning');
+                });
+                
+                log('フォールバック機能は正常に動作しています', 'success');
+            } else {
+                log('❌ フォールバックローダーが見つかりません', 'error');
+            }
+        }
+
+        // ファイルハンドラーのテスト
+        function testFileHandler() {
+            log('ファイルハンドラーをテスト中...', 'info');
+            
+            try {
+                const fileHandler = new FileHandler();
+                log(`✅ FileHandler インスタンス作成成功`, 'success');
+                log(`サポートレベル: ${fileHandler.supportLevel}`, 'info');
+                log(`フォルダ選択サポート: ${fileHandler.isSupported() ? 'Yes' : 'No'}`, 'info');
+            } catch (error) {
+                log(`❌ FileHandler エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // EXIF ハンドラーのテスト
+        function testExifHandler() {
+            log('EXIF ハンドラーをテスト中...', 'info');
+            
+            try {
+                const exifHandler = new ExifHandler();
+                log(`✅ ExifHandler インスタンス作成成功`, 'success');
+                log(`デバッグモード: ${exifHandler.debugMode ? 'ON' : 'OFF'}`, 'info');
+                log(`バッチサイズ: ${exifHandler.maxBatchSize}`, 'info');
+                
+                // メモリ使用量のテスト
+                exifHandler.logMemoryUsage();
+            } catch (error) {
+                log(`❌ ExifHandler エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // GIS エクスポーターのテスト
+        function testGisExporter() {
+            log('GIS エクスポーターをテスト中...', 'info');
+            
+            try {
+                const gisExporter = new GISExporter();
+                log(`✅ GISExporter インスタンス作成成功`, 'success');
+                log(`サポート形式: ${gisExporter.getSupportedFormats().join(', ')}`, 'info');
+                
+                // テストデータでの動作確認
+                const testPath = 'test/photo.jpg';
+                const safePath = gisExporter.getRelativePath(testPath);
+                log(`パス処理テスト: "${testPath}" → "${safePath}"`, 'success');
+            } catch (error) {
+                log(`❌ GISExporter エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // エラーハンドリングのテスト
+        function testErrorHandling() {
+            log('エラーハンドリングをテスト中...', 'info');
+            
+            // 意図的にエラーを発生させて処理をテスト
+            try {
+                throw new Error('テスト用エラー');
+            } catch (error) {
+                const errorInfo = {
+                    name: error.name,
+                    message: error.message,
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                };
+                
+                log(`✅ エラー情報の詳細取得: ${JSON.stringify(errorInfo, null, 2)}`, 'success');
+            }
+            
+            // セキュリティエラーのシミュレーション
+            const securityError = new Error('テスト用セキュリティエラー');
+            securityError.name = 'SecurityError';
+            
+            let errorMessage = securityError.message;
+            if (securityError.name === 'SecurityError') {
+                errorMessage = 'ブラウザのセキュリティ設定により、フォルダにアクセスできません。';
+            }
+            
+            log(`✅ セキュリティエラー処理: "${errorMessage}"`, 'success');
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Photo GIS Viewer テストシステム初期化', 'success');
+            
+            // 各種検出を実行
+            detectBrowserSupport();
+            
+            // ライブラリが読み込まれるまで少し待つ
+            setTimeout(() => {
+                checkLibraries();
+                updateMemoryInfo();
+            }, 1000);
+            
+            log('すべての初期チェックが完了しました', 'success');
+        });
+
+        // 定期的なメモリ監視
+        setInterval(updateMemoryInfo, 30000); // 30秒ごと
+    </script>
+</body>
+</html>

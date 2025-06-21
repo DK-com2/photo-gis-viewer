@@ -1,7 +1,9 @@
 class ExifHandler {
     constructor() {
         this.photosWithGPS = [];
-        this.debugMode = true; // デバッグモードを有効化
+        this.debugMode = false; // メモリ節約のためデフォルトで無効
+        this.maxBatchSize = 50; // バッチサイズ制限
+        this.processedCount = 0; // 処理数カウンタ
     }
 
     // EXIF情報を抽出
@@ -71,7 +73,7 @@ class ExifHandler {
                 camera: null,
                 lens: null,
                 settings: null,
-                rawTags: this.debugMode ? tags : null // デバッグ用に生データを保存
+                // rawTags: メモリ節約のため生データは保存しない
             };
 
             // GPS情報の取得（複数のパターンに対応）
@@ -427,39 +429,63 @@ class ExifHandler {
         return Object.keys(settings).length > 0 ? settings : null;
     }
 
-    // 複数ファイルのEXIF情報を処理
+    // 複数ファイルのEXIF情報を処理（メモリ効率的なバッチ処理）
     async processFiles(fileObjects, progressCallback) {
         this.photosWithGPS = [];
         const allPhotos = [];
         const total = fileObjects.length;
+        this.processedCount = 0;
 
         console.log(`${total}枚の写真を処理開始...`);
 
-        for (let i = 0; i < fileObjects.length; i++) {
-            const fileObj = fileObjects[i];
+        // メモリ効率のためバッチ処理
+        for (let i = 0; i < fileObjects.length; i += this.maxBatchSize) {
+            const batch = fileObjects.slice(i, i + this.maxBatchSize);
+            console.log(`📦 バッチ ${Math.floor(i / this.maxBatchSize) + 1}/${Math.ceil(total / this.maxBatchSize)} を処理中... (${batch.length}枚)`);
             
-            if (progressCallback) {
-                progressCallback(i + 1, total, fileObj.name);
+            for (let j = 0; j < batch.length; j++) {
+                const fileObj = batch[j];
+                const currentIndex = i + j;
+                this.processedCount = currentIndex + 1;
+                
+                if (progressCallback) {
+                    progressCallback(this.processedCount, total, fileObj.name);
+                }
+
+                try {
+                    const exifData = await this.extractExifData(fileObj);
+                    
+                    // デバッグ用生データを削除（メモリ節約）
+                    if (exifData.rawTags) {
+                        delete exifData.rawTags;
+                    }
+                    
+                    allPhotos.push(exifData);
+
+                    if (exifData.hasGPS) {
+                        this.photosWithGPS.push(exifData);
+                        if (this.debugMode) {
+                            console.log(`✓ GPS情報発見: ${fileObj.name}`);
+                        }
+                    } else if (this.debugMode) {
+                        console.log(`✗ GPS情報なし: ${fileObj.name}`);
+                    }
+                } catch (error) {
+                    console.warn(`処理エラー (${fileObj.name}):`, error);
+                }
             }
-
-            console.log(`処理中: ${fileObj.name} (${i + 1}/${total})`);
-            const exifData = await this.extractExifData(fileObj);
-            allPhotos.push(exifData);
-
-            if (exifData.hasGPS) {
-                this.photosWithGPS.push(exifData);
-                console.log(`✓ GPS情報発見: ${fileObj.name}`);
-            } else {
-                console.log(`✗ GPS情報なし: ${fileObj.name}`);
-            }
-
-            // UIの応答性を保つために少し待機
-            if (i % 5 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 1));
+            
+            // バッチ間でガベージコレクションの機会を提供
+            if (i + this.maxBatchSize < fileObjects.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // メモリ使用量をチェック
+                this.checkMemoryUsage();
             }
         }
 
         console.log(`処理完了: 全${total}枚中${this.photosWithGPS.length}枚にGPS情報あり`);
+        this.logMemoryUsage();
 
         return {
             allPhotos,
@@ -467,6 +493,32 @@ class ExifHandler {
             totalCount: total,
             gpsCount: this.photosWithGPS.length
         };
+    }
+
+    // メモリ使用量をログ出力
+    logMemoryUsage() {
+        if (performance.memory) {
+            const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+            const total = Math.round(performance.memory.totalJSHeapSize / 1024 / 1024);
+            const limit = Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024);
+            console.log(`📊 メモリ使用量: ${used}MB / ${total}MB (制限: ${limit}MB)`);
+        }
+    }
+
+    // メモリ使用量をチェックし、必要に応じて警告
+    checkMemoryUsage() {
+        if (performance.memory) {
+            const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+            const limit = Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024);
+            const usagePercent = (used / limit) * 100;
+            
+            if (usagePercent > 80) {
+                console.warn(`⚠️ メモリ使用率が高いです: ${usagePercent.toFixed(1)}%`);
+                console.warn('軽量版の使用を検討してください。');
+            } else if (usagePercent > 60) {
+                console.log(`📊 メモリ使用率: ${usagePercent.toFixed(1)}%`);
+            }
+        }
     }
 
     // デバッグモードの切り替え

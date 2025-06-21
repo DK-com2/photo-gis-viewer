@@ -23,6 +23,7 @@
                 <div class="controls-row">
                     <button id="selectFolder" class="btn btn-primary">📁 フォルダを選択</button>
                     <button id="toggleFilters" class="btn btn-outline hidden">🔍 フィルター</button>
+                    <button id="exportGIS" class="btn btn-secondary hidden">📊 GISエクスポート</button>
                     <div class="info">
                         <span id="photoCount">0枚の写真</span>
                         <span id="gpsCount">0枚に位置情報あり</span>
@@ -76,14 +77,19 @@
     <!-- Leaflet MarkerCluster JS -->
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     
+    <!-- JSZip for export functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
     <!-- ExifReader JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exifreader@4.16.0/dist/exif-reader.js"></script>
     
     <!-- Custom JS -->
+    <script src="libs/fallback-loader.js"></script>
     <script src="js/file-handler.js"></script>
     <script src="js/exif-handler.js"></script>
     <script src="js/map-handler.js"></script>
+    <script src="js/gis-exporter.js"></script>
     <script src="js/app-lite.js"></script>
 </body>
 </html>

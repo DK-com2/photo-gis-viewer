@@ -4,25 +4,55 @@ class FileHandler {
         this.selectedFiles = [];
         this.directoryHandle = null; // ディレクトリハンドルを保持
         this.fileHandles = new Map(); // ファイルハンドルのキャッシュ
+        
+        // ブラウザサポートレベルを検出
+        this.supportLevel = this.detectSupportLevel();
+        console.log(`🔍 ブラウザサポートレベル: ${this.supportLevel}`);
     }
 
-    // File System Access API対応チェック
-    isSupported() {
-        return 'showDirectoryPicker' in window;
-    }
-
-    // フォルダ選択とファイル読み込み
-    async selectFolder() {
-        if (!this.isSupported()) {
-            throw new Error('お使いのブラウザはフォルダ選択に対応していません。Chrome または Edge をご利用ください。');
+    // ブラウザサポートレベルを検出
+    detectSupportLevel() {
+        if ('showDirectoryPicker' in window) {
+            return 'FULL'; // Chrome/Edge - フル機能
+        } else if (this.supportsWebkitDirectory()) {
+            return 'WEBKIT'; // Safari/Firefox - 制限あり
+        } else {
+            return 'BASIC'; // 個別ファイル選択のみ
         }
+    }
 
+    // webkitdirectory対応チェック
+    supportsWebkitDirectory() {
+        const input = document.createElement('input');
+        return 'webkitdirectory' in input;
+    }
+
+    // File System Access API対応チェック（後方互換性のため残す）
+    isSupported() {
+        return this.supportLevel !== 'BASIC';
+    }
+
+    // フォルダ選択とファイル読み込み（サポートレベルに応じて分岐）
+    async selectFolder() {
+        switch (this.supportLevel) {
+            case 'FULL':
+                return this.selectFolderNative();
+            case 'WEBKIT':
+                return this.selectFolderWebkit();
+            default:
+                throw new Error('お使いのブラウザはフォルダ選択に対応していません。Chrome、Edge、Safari、または Firefox の最新版をご利用ください。');
+        }
+    }
+
+    // ネイティブ File System Access API を使用
+    async selectFolderNative() {
         try {
             this.directoryHandle = await window.showDirectoryPicker();
             const files = await this.getFilesFromDirectory(this.directoryHandle);
             const imageFiles = this.filterImageFiles(files);
             
             this.selectedFiles = imageFiles;
+            console.log(`📁 ネイティブAPI経由で${imageFiles.length}枚の画像を読み込みました`);
             return imageFiles;
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -30,6 +60,56 @@ class FileHandler {
             }
             throw new Error(`フォルダの読み込みに失敗しました: ${error.message}`);
         }
+    }
+
+    // WebKit Directory API を使用（Safari/Firefox用）
+    async selectFolderWebkit() {
+        return new Promise((resolve, reject) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.webkitdirectory = true;
+            input.multiple = true;
+            input.style.display = 'none';
+            
+            input.onchange = (e) => {
+                try {
+                    const files = Array.from(e.target.files);
+                    const imageFiles = this.filterImageFilesWebkit(files);
+                    this.selectedFiles = imageFiles;
+                    console.log(`📁 WebKit API経由で${imageFiles.length}枚の画像を読み込みました`);
+                    resolve(imageFiles);
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    document.body.removeChild(input);
+                }
+            };
+            
+            input.onerror = () => {
+                document.body.removeChild(input);
+                reject(new Error('フォルダ選択中にエラーが発生しました。'));
+            };
+            
+            // DOM に追加してクリック
+            document.body.appendChild(input);
+            input.click();
+        });
+    }
+
+    // WebKit用のファイルフィルタリング
+    filterImageFilesWebkit(files) {
+        return files
+            .filter(file => {
+                const extension = this.getFileExtension(file.name);
+                return this.supportedFormats.includes(extension);
+            })
+            .map(file => ({
+                file: file,
+                name: file.name,
+                path: file.webkitRelativePath || file.name,
+                size: file.size,
+                lastModified: file.lastModified
+            }));
     }
 
     // ディレクトリから再帰的にファイルを取得

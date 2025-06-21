@@ -24,6 +24,9 @@ function initializeApp() {
 
     // ブラウザサポートチェック
     checkBrowserSupport();
+    
+    // postMessageリスナーを設定（エクスポートウィンドウ用）
+    window.addEventListener('message', handleExportWindowMessage);
 }
 
 function setupEventListeners() {
@@ -39,6 +42,10 @@ function setupEventListeners() {
     applyFiltersBtn.addEventListener('click', handleApplyFilters);
     clearFiltersBtn.addEventListener('click', handleClearFilters);
     toggleFiltersBtn.addEventListener('click', toggleFilters);
+
+    // GISエクスポートボタン
+    const exportGISBtn = document.getElementById('exportGIS');
+    exportGISBtn.addEventListener('click', handleGISExport);
 
     // モーダルのクローズ
     const modal = document.getElementById('photoModal');
@@ -97,6 +104,21 @@ async function handleFolderSelection() {
             throw new Error('選択したフォルダに画像ファイルが見つかりませんでした。');
         }
 
+        // ファイル数による処理方法の選択
+        if (imageFiles.length > 200) {
+            const useStandard = confirm(
+                `${imageFiles.length}枚の画像が見つかりました。\n\n` +
+                `多数の画像を処理するため、軽量版の使用を推奨します。\n\n` +
+                `このまま標準版で続行しますか？\n` +
+                `（「キャンセル」で軽量版へのリダイレクト）`
+            );
+            
+            if (!useStandard) {
+                window.location.href = 'index-lite.html';
+                return;
+            }
+        }
+
         // EXIF情報の処理
         const results = await exifHandler.processFiles(imageFiles, updateProgress);
 
@@ -113,11 +135,39 @@ async function handleFolderSelection() {
         } else {
             console.log(`${results.gpsCount}枚の写真を地図に表示しました。`);
             updateVisibleCount(results.gpsCount);
+            
+            // GISエクスポートボタンを表示
+            showExportButton();
         }
 
     } catch (error) {
         console.error('エラー:', error);
-        showError(error.message);
+        
+        // エラータイプに応じた詳細メッセージ
+        let errorMessage = error.message;
+        
+        if (error.name === 'SecurityError') {
+            errorMessage = 'ブラウザのセキュリティ設定により、フォルダにアクセスできません。';
+        } else if (error.name === 'NotAllowedError') {
+            errorMessage = 'フォルダアクセスが拒否されました。ページを再読み込みして再試行してください。';
+        } else if (error.name === 'AbortError') {
+            errorMessage = 'フォルダ選択がキャンセルされました。';
+        } else if (error.message.includes('webkitdirectory')) {
+            errorMessage = 'お使いのブラウザではフォルダ選択機能に制限があります。Chrome または Edge の最新版をお試しください。';
+        }
+        
+        showError(errorMessage);
+        
+        // 詳細なエラー情報をコンソールに記録
+        console.error('詳細エラー情報:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            userAgent: navigator.userAgent,
+            supportLevel: fileHandler.supportLevel,
+            timestamp: new Date().toISOString()
+        });
+        
     } finally {
         // ローディング非表示
         hideLoading();
@@ -284,6 +334,118 @@ function updateFilterStatus(isActive) {
         if (toggleBtn.textContent.includes('(有効)')) {
             toggleBtn.textContent = '🔍 フィルター';
         }
+    }
+}
+
+// GISエクスポート機能（別画面オープン方式）
+async function handleGISExport() {
+    try {
+        if (!exifHandler || !exifHandler.getPhotosWithGPS || exifHandler.getPhotosWithGPS().length === 0) {
+            showError('GISエクスポートできるデータがありません。');
+            return;
+        }
+
+        const photosCount = exifHandler.getPhotosWithGPS().length;
+        console.log(`📊 ${photosCount}枚の写真データでエクスポート画面を開きます`);
+
+        // 別画面でエクスポート画面を開く
+        const exportWindow = window.open(
+            'export.html', 
+            'gis-export',
+            'width=700,height=800,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no'
+        );
+
+        if (!exportWindow) {
+            showError('ポップアップがブロックされました。ブラウザのポップアップ設定を確認してください。');
+            return;
+        }
+
+        // 新しいウィンドウにフォーカスを当てる
+        exportWindow.focus();
+        
+        // エクスポートウィンドウが読み込み完了後にデータを送信
+        exportWindow.addEventListener('load', () => {
+            setTimeout(() => {
+                sendDataToExportWindow(exportWindow);
+            }, 1000); // 1秒待ってから送信
+        });
+        
+        // 即座にも送信を試行（既に読み込み済みの場合）
+        setTimeout(() => {
+            sendDataToExportWindow(exportWindow);
+        }, 2000);
+        
+        console.log('✅ エクスポート画面を開きました');
+        
+    } catch (error) {
+        console.error('GISエクスポートエラー:', error);
+        showError(`エクスポート画面の表示に失敗しました: ${error.message}`);
+    }
+}
+
+// エクスポートウィンドウにデータを送信
+function sendDataToExportWindow(exportWindow) {
+    try {
+        if (!exportWindow || exportWindow.closed) {
+            console.warn('エクスポートウィンドウが閉じられています');
+            return;
+        }
+
+        const photosWithGPS = exifHandler.getPhotosWithGPS();
+        
+        // 写真データをシリアライズ可能な形式に変換
+        const serializedData = photosWithGPS.map(photo => ({
+            filename: photo.filename,
+            filePath: photo.path || photo.filePath,
+            latitude: photo.latitude,
+            longitude: photo.longitude,
+            hasGPS: photo.hasGPS,
+            dateTime: photo.dateTime ? photo.dateTime.toISOString() : null,
+            camera: photo.camera ? {
+                make: photo.camera.make,
+                model: photo.camera.model,
+                lens: photo.camera.lens
+            } : null,
+            settings: photo.settings
+        }));
+
+        // postMessageでデータを送信
+        exportWindow.postMessage({
+            type: 'PHOTO_DATA',
+            data: serializedData,
+            timestamp: new Date().toISOString()
+        }, '*');
+        
+        console.log(`📨 ${serializedData.length}枚の写真データをエクスポートウィンドウに送信しました`);
+        
+    } catch (error) {
+        console.error('データ送信エラー:', error);
+    }
+}
+
+// エクスポートボタンの表示
+function showExportButton() {
+    const exportBtn = document.getElementById('exportGIS');
+    exportBtn.classList.remove('hidden');
+}
+
+// エクスポートボタンの非表示
+function hideExportButton() {
+    const exportBtn = document.getElementById('exportGIS');
+    exportBtn.classList.add('hidden');
+}
+
+// エクスポートウィンドウからのメッセージを処理
+function handleExportWindowMessage(event) {
+    try {
+        if (event.data && event.data.type === 'REQUEST_PHOTO_DATA') {
+            console.log('📨 エクスポートウィンドウからデータリクエストを受信');
+            
+            // リクエストしたウィンドウにデータを送信
+            sendDataToExportWindow(event.source);
+        }
+    } catch (error) {
+        console.error('エクスポートメッセージ処理エラー:', error);
     }
 }
 

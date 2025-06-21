@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GISデータエクスポート - Photo GIS Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .export-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .export-header {
+            margin-bottom: 30px;
+        }
+
+        .export-header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .export-header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .photo-stats {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+        }
+
+        .photo-stats h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .export-options {
+            margin: 30px 0;
+        }
+
+        .format-selection {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .format-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .format-card:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+
+        .format-card.selected {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+
+        .format-card input[type="checkbox"] {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .format-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .format-description {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .progress {
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .download-links {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .download-link {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .download-link:hover {
+            background: #1e7e34;
+        }
+
+        @media (max-width: 768px) {
+            .export-container {
+                margin: 10px;
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .format-selection {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="export-container">
+        <div class="export-header">
+            <h1>📊 GISデータエクスポート</h1>
+            <p>写真の位置情報をGIS形式でエクスポートします</p>
+        </div>
+
+        <div class="photo-stats" id="photoStats">
+            <h3>📸 写真統計情報</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalPhotos">0</div>
+                    <div class="stat-label">総写真数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="gpsPhotos">0</div>
+                    <div class="stat-label">位置情報あり</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="dateRange">-</div>
+                    <div class="stat-label">撮影期間</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="cameraCount">0</div>
+                    <div class="stat-label">カメラ種類</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="export-options">
+            <h3>エクスポート形式を選択</h3>
+            <div class="format-selection">
+                <div class="format-card" onclick="toggleFormat('geojson')">
+                    <input type="checkbox" id="format-geojson" checked>
+                    <div class="format-title">🗺️ GeoJSON</div>
+                    <div class="format-description">
+                        QGIS、ArcGIS等のGISソフトウェア用<br>
+                        ベクターデータ形式
+                    </div>
+                </div>
+
+                <div class="format-card" onclick="toggleFormat('csv')">
+                    <input type="checkbox" id="format-csv" checked>
+                    <div class="format-title">📊 CSV</div>
+                    <div class="format-description">
+                        Excel、Google Sheets等の表計算ソフト用<br>
+                        汎用データ形式
+                    </div>
+                </div>
+
+                <div class="format-card" onclick="toggleFormat('kml')">
+                    <input type="checkbox" id="format-kml">
+                    <div class="format-title">🌍 KML</div>
+                    <div class="format-description">
+                        Google Earth用データ形式<br>
+                        地理的可視化に最適
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressText">エクスポート準備中...</p>
+        </div>
+
+        <div class="success-message" id="successMessage">
+            <strong>✅ エクスポート完了!</strong><br>
+            選択したファイルがダウンロードされました。
+        </div>
+
+        <div class="error-message" id="errorMessage">
+            <strong>❌ エラーが発生しました</strong><br>
+            <span id="errorText"></span>
+        </div>
+
+        <div class="download-links" id="downloadLinks">
+            <h4>📁 ダウンロードファイル:</h4>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-primary" id="exportBtn" onclick="startExport()">
+                📥 エクスポート開始
+            </button>
+            <button class="btn btn-secondary" onclick="window.close()">
+                ❌ キャンセル
+            </button>
+        </div>
+    </div>
+
+    <!-- JSZip for file generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script>
+        // URLパラメータから写真データを取得
+        let photoData = [];
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 エクスポートページの初期化を開始...');
+            
+            // postMessageのリスナーを設定
+            window.addEventListener('message', handleMessageFromParent);
+            
+            // 親ウィンドウにデータをリクエスト
+            requestDataFromParent();
+            
+            // フォールバックとして直接アクセスも試行
+            setTimeout(() => {
+                if (photoData.length === 0) {
+                    console.log('🔄 フォールバック: 直接アクセスを試行...');
+                    loadPhotoDataFromParent();
+                }
+                updateStats();
+            }, 3000); // 3秒後にフォールバック
+        });
+
+        // 親ウィンドウにデータをリクエスト
+        function requestDataFromParent() {
+            try {
+                if (window.opener && !window.opener.closed) {
+                    // 親ウィンドウにデータリクエストを送信
+                    window.opener.postMessage({
+                        type: 'REQUEST_PHOTO_DATA',
+                        timestamp: new Date().toISOString()
+                    }, '*');
+                    console.log('📨 親ウィンドウにデータリクエストを送信しました');
+                } else {
+                    console.warn('⚠️ 親ウィンドウが利用できません');
+                }
+            } catch (error) {
+                console.error('データリクエストエラー:', error);
+            }
+        }
+
+        // 親ウィンドウからのメッセージを処理
+        function handleMessageFromParent(event) {
+            try {
+                console.log('📬 メッセージを受信:', event.data);
+                
+                if (event.data && event.data.type === 'PHOTO_DATA') {
+                    const receivedData = event.data.data;
+                    console.log(`✅ ${receivedData.length}枚の写真データを受信しました`);
+                    
+                    // 受信したデータをDate型に変換
+                    photoData = receivedData.map(photo => ({
+                        ...photo,
+                        dateTime: photo.dateTime ? new Date(photo.dateTime) : null
+                    }));
+                    
+                    console.log('🔄 写真データを処理しました:', {
+                        写真数: photoData.length,
+                        ソース: event.data.source || '標準版',
+                        サンプル: photoData[0] ? {
+                            filename: photoData[0].filename,
+                            hasGPS: photoData[0].hasGPS,
+                            latitude: photoData[0].latitude,
+                            longitude: photoData[0].longitude
+                        } : 'なし'
+                    });
+                    
+                    // 統計情報を更新
+                    updateStats();
+                    
+                    // エラーメッセージを非表示
+                    document.getElementById('errorMessage').style.display = 'none';
+                    
+                } else {
+                    console.log('📨 無関係なメッセージ:', event.data);
+                }
+                
+            } catch (error) {
+                console.error('メッセージ処理エラー:', error);
+                showError('データの受信中にエラーが発生しました: ' + error.message);
+            }
+        }
+
+        // 親ウィンドウから写真データを取得
+        function loadPhotoDataFromParent() {
+            console.log('🔍 親ウィンドウデータの読み込みを開始...');
+            
+            try {
+                // 親ウィンドウの存在を確認
+                if (!window.opener) {
+                    console.error('❌ window.openerが存在しません');
+                    showError('親ウィンドウにアクセスできません。メインウィンドウから再度開いてください。');
+                    return;
+                }
+                
+                console.log('✅ window.openerが存在します');
+                console.log('🔍 親ウィンドウのプロパティ:', Object.keys(window.opener));
+                
+                // exifHandlerの存在を確認
+                if (!window.opener.exifHandler) {
+                    console.error('❌ window.opener.exifHandlerが存在しません');
+                    console.log('🔍 利用可能なプロパティ:', Object.keys(window.opener));
+                    showError('親ウィンドウのexifHandlerが見つかりません。メインウィンドウで先に写真を読み込んでください。');
+                    return;
+                }
+                
+                console.log('✅ window.opener.exifHandlerが存在します');
+                
+                // getPhotosWithGPSメソッドの存在を確認
+                if (!window.opener.exifHandler.getPhotosWithGPS) {
+                    console.error('❌ getPhotosWithGPSメソッドが存在しません');
+                    showError('exifHandlerのgetPhotosWithGPSメソッドが見つかりません。');
+                    return;
+                }
+                
+                console.log('✅ getPhotosWithGPSメソッドが存在します');
+                
+                // データを取得
+                photoData = window.opener.exifHandler.getPhotosWithGPS();
+                console.log(`📸 ${photoData.length}枚の写真データを読み込みました`);
+                
+                // データの検証
+                if (!photoData || photoData.length === 0) {
+                    console.warn('⚠️ 写真データが空です');
+                    showError('エクスポートできる写真データがありません。まずメインウィンドウで写真フォルダを選択して処理を完了してください。');
+                    return;
+                }
+                
+                console.log('✅ 写真データの読み込み成功:', {
+                    写真数: photoData.length,
+                    サンプル: photoData[0] ? {
+                        filename: photoData[0].filename,
+                        hasGPS: photoData[0].hasGPS,
+                        latitude: photoData[0].latitude,
+                        longitude: photoData[0].longitude
+                    } : 'なし'
+                });
+                
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+                showError('写真データの読み込みに失敗しました: ' + error.message);
+            }
+        }
+
+        // 統計情報を更新
+        function updateStats() {
+            if (photoData.length === 0) {
+                showError('エクスポートできる写真データがありません。');
+                return;
+            }
+
+            document.getElementById('totalPhotos').textContent = photoData.length;
+            document.getElementById('gpsPhotos').textContent = photoData.length;
+
+            // 撮影期間を計算
+            const dates = photoData
+                .filter(photo => photo.dateTime)
+                .map(photo => photo.dateTime)
+                .sort();
+            
+            if (dates.length > 0) {
+                const startDate = new Date(dates[0]).toLocaleDateString('ja-JP', {month: 'short', day: 'numeric'});
+                const endDate = new Date(dates[dates.length - 1]).toLocaleDateString('ja-JP', {month: 'short', day: 'numeric'});
+                document.getElementById('dateRange').textContent = `${startDate}〜${endDate}`;
+            }
+
+            // カメラ種類を計算
+            const cameras = new Set();
+            photoData.forEach(photo => {
+                if (photo.camera && photo.camera.make) {
+                    cameras.add(photo.camera.make);
+                }
+            });
+            document.getElementById('cameraCount').textContent = cameras.size;
+        }
+
+        // フォーマット選択の切り替え
+        function toggleFormat(format) {
+            const checkbox = document.getElementById(`format-${format}`);
+            const card = checkbox.parentElement;
+            
+            checkbox.checked = !checkbox.checked;
+            
+            if (checkbox.checked) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        }
+
+        // エクスポート開始
+        async function startExport() {
+            const selectedFormats = getSelectedFormats();
+            
+            if (selectedFormats.length === 0) {
+                showError('少なくとも1つの形式を選択してください。');
+                return;
+            }
+
+            if (photoData.length === 0) {
+                showError('エクスポートできる写真データがありません。');
+                return;
+            }
+
+            const exportBtn = document.getElementById('exportBtn');
+            exportBtn.disabled = true;
+            exportBtn.textContent = 'エクスポート中...';
+
+            showProgress();
+
+            try {
+                // エクスポート実行
+                await performExport(selectedFormats);
+                showSuccess();
+            } catch (error) {
+                console.error('エクスポートエラー:', error);
+                showError(`エクスポートに失敗しました: ${error.message}`);
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.textContent = '📥 エクスポート開始';
+                hideProgress();
+            }
+        }
+
+        // 選択された形式を取得
+        function getSelectedFormats() {
+            const formats = [];
+            ['geojson', 'csv', 'kml'].forEach(format => {
+                if (document.getElementById(`format-${format}`).checked) {
+                    formats.push(format);
+                }
+            });
+            return formats;
+        }
+
+        // エクスポート実行
+        async function performExport(formats) {
+            updateProgress(20, 'データ生成中...');
+            
+            const timestamp = getTimestamp();
+            const exportData = {};
+
+            // 各形式でデータ生成
+            for (let i = 0; i < formats.length; i++) {
+                const format = formats[i];
+                updateProgress(30 + (i * 30), `${format.toUpperCase()}形式を生成中...`);
+                
+                switch (format) {
+                    case 'geojson':
+                        exportData.geojson = createGeoJSON();
+                        break;
+                    case 'csv':
+                        exportData.csv = createCSV();
+                        break;
+                    case 'kml':
+                        exportData.kml = createKML();
+                        break;
+                }
+                
+                await delay(500); // UI応答性確保
+            }
+
+            updateProgress(90, 'メタデータ生成中...');
+            exportData.metadata = createMetadata(timestamp);
+
+            updateProgress(95, 'ファイルダウンロード準備中...');
+            await downloadFiles(exportData, timestamp);
+
+            updateProgress(100, 'エクスポート完了!');
+        }
+
+        // GeoJSON生成（簡略版）
+        function createGeoJSON() {
+            const features = photoData.map((photo, index) => ({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [
+                        parseFloat(photo.longitude.toFixed(6)),
+                        parseFloat(photo.latitude.toFixed(6))
+                    ]
+                },
+                properties: {
+                    id: index + 1,
+                    filename: photo.filename,
+                    photo_path: photo.path || photo.filePath,
+                    datetime: photo.dateTime ? photo.dateTime.toISOString() : null,
+                    datetime_local: photo.dateTime ? photo.dateTime.toLocaleString('ja-JP') : null,
+                    camera_make: photo.camera?.make || null,
+                    camera_model: photo.camera?.model || null
+                }
+            }));
+
+            return JSON.stringify({
+                type: "FeatureCollection",
+                crs: {
+                    type: "name",
+                    properties: { name: "EPSG:4326" }
+                },
+                features: features
+            }, null, 2);
+        }
+
+        // CSV生成（簡略版）
+        function createCSV() {
+            const headers = ['id', 'filename', 'latitude', 'longitude', 'datetime', 'camera_make', 'camera_model', 'photo_path'];
+            const rows = photoData.map((photo, index) => [
+                index + 1,
+                `"${photo.filename}"`,
+                photo.latitude.toFixed(6),
+                photo.longitude.toFixed(6),
+                photo.dateTime ? `"${photo.dateTime.toISOString()}"` : '',
+                photo.camera?.make ? `"${photo.camera.make}"` : '',
+                photo.camera?.model ? `"${photo.camera.model}"` : '',
+                `"${photo.path || photo.filePath}"`
+            ]);
+
+            return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        }
+
+        // KML生成（簡略版）
+        function createKML() {
+            const placemarks = photoData.map(photo => {
+                const coordinates = `${photo.longitude.toFixed(6)},${photo.latitude.toFixed(6)},0`;
+                return `
+        <Placemark>
+            <name>${photo.filename}</name>
+            <description><![CDATA[
+                <b>撮影日時:</b> ${photo.dateTime ? photo.dateTime.toLocaleString('ja-JP') : '不明'}<br>
+                <b>カメラ:</b> ${photo.camera ? `${photo.camera.make || ''} ${photo.camera.model || ''}`.trim() : '不明'}
+            ]]></description>
+            <Point>
+                <coordinates>${coordinates}</coordinates>
+            </Point>
+        </Placemark>`;
+            }).join('');
+
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+    <Document>
+        <name>Photo Locations</name>
+        <description>写真撮影位置データ</description>
+        ${placemarks}
+    </Document>
+</kml>`;
+        }
+
+        // メタデータ生成
+        function createMetadata(timestamp) {
+            return `# Photo GIS Export Metadata
+
+## Export Information
+- Export Date: ${new Date().toLocaleString('ja-JP')}
+- Total Photos: ${photoData.length}
+- Coordinate System: WGS84 (EPSG:4326)
+
+## QGISでの写真表示方法
+1. QGISで photo_locations.geojson をドラッグ&ドロップ
+2. レイヤーを右クリック → 「プロパティ」
+3. 「アクション」タブ → 「+」ボタン
+4. アクション設定:
+   - タイプ: 汎用
+   - 説明: 写真表示
+   - アクション: [% "photo_path" %]
+5. ポイントを右クリック → 「写真表示」
+
+Generated by Photo GIS Viewer`;
+        }
+
+        // ファイルダウンロード
+        async function downloadFiles(exportData, timestamp) {
+            const downloadLinks = document.getElementById('downloadLinks');
+            downloadLinks.innerHTML = '<h4>📁 ダウンロードファイル:</h4>';
+
+            // 個別ファイルとしてダウンロード
+            const files = [
+                { data: exportData.geojson, name: `photo_locations_${timestamp}.geojson`, type: 'application/json' },
+                { data: exportData.csv, name: `photo_locations_${timestamp}.csv`, type: 'text/csv' },
+                { data: exportData.kml, name: `photo_locations_${timestamp}.kml`, type: 'application/vnd.google-earth.kml+xml' },
+                { data: exportData.metadata, name: `export_metadata_${timestamp}.txt`, type: 'text/plain' }
+            ].filter(file => file.data);
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // ダウンロードリンクを作成
+                const link = document.createElement('a');
+                link.className = 'download-link';
+                link.textContent = `📄 ${file.name}`;
+                link.onclick = () => downloadFile(file.data, file.name, file.type);
+                downloadLinks.appendChild(link);
+
+                await delay(100); // 少し間隔を空ける
+            }
+
+            downloadLinks.style.display = 'block';
+        }
+
+        // 単一ファイルダウンロード
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // ユーティリティ関数
+        function getTimestamp() {
+            return new Date().toISOString().slice(0, 19).replace(/[T:]/g, '').replace(/-/g, '');
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function updateProgress(percent, text) {
+            document.getElementById('progressFill').style.width = `${percent}%`;
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function showProgress() {
+            document.getElementById('progress').style.display = 'block';
+        }
+
+        function hideProgress() {
+            document.getElementById('progress').style.display = 'none';
+        }
+
+        function showSuccess() {
+            document.getElementById('successMessage').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').style.display = 'block';
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('successMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
