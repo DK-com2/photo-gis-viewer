@@ -2,6 +2,12 @@
 
 写真のEXIF情報から位置情報を抽出し、地図上に表示するWebアプリケーションです。
 
+![Image](https://github.com/user-attachments/assets/7e39285b-93b8-4b58-85cc-8f0fa6bd27a0)
+
+![Image](https://github.com/user-attachments/assets/c05b3c46-aecb-435e-acb3-59db4649dcad)
+
+---
+
 ## 🚀 すぐに始める
 
 **最も簡単な方法:**
